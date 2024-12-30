@@ -276,7 +276,7 @@ def train(config,
             # Log every 1000 steps
             step = len(loader)*epoch_count_from_0 + _
             if step % 1000 == 0:
-                writer.add_scalar(f'Loss/1k_step', losses.avg, _)
+                writer.add_scalar(f'Loss/1k_step', losses.avg, step)
 
     writer.flush() # Ensure writer pending the ca
 
