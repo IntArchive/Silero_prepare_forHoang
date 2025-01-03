@@ -20,7 +20,7 @@ warnings.filterwarnings('ignore')
 
 def read_audio(path: str,
                sampling_rate: int = 16000,
-               normalize=True):
+               normalize=False):
     if path[path.rfind('.')+1:] == 'opus':
         wav, sr = soundfile.read(path) #
         wav = torch.Tensor(wav).reshape(1,-1)
@@ -110,7 +110,7 @@ class SileroVadDataset(Dataset):
         wav, gt, mask = self.load_speech_sample(idx)
 
         if self.mode == 'train':
-            wav = torch.reshape(torch.from_numpy(wav),(1,1,-1))
+            wav = torch.reshape(wav,(1,1,-1))
             wav = self.add_augs(wav)
             len_wav = wav.size()[-1]
 
@@ -123,9 +123,9 @@ class SileroVadDataset(Dataset):
                 transform = torchaudio.transforms.Resample(orig_freq=self.sr,
                                                            new_freq=8000)
                 wav = transform(wav)
-            return torch.squeeze(wav), torch.FloatTensor(gt), torch.from_numpy(mask)
+            return torch.squeeze(wav), gt, mask
         else:
-            return torch.from_numpy(wav), torch.FloatTensor(gt), torch.from_numpy(mask)
+            return torch.from_numpy(wav), torch.FloatTensor(gt), mask
 
     def __len__(self):
         return len(self.index_dict)
@@ -133,11 +133,11 @@ class SileroVadDataset(Dataset):
     def load_speech_sample(self, idx=None):
         if idx is None:
             idx = random.randint(0, len(self.index_dict) - 1)
-        wav = read_audio(self.index_dict[idx]['audio_path'], self.sr).detach().cpu().numpy()
+        wav = read_audio(self.index_dict[idx]['audio_path'], self.sr)
 
         if len(wav) % self.num_samples != 0:
             pad_num = self.num_samples - (len(wav) % self.num_samples)
-            wav = np.pad(wav, (0, pad_num), 'constant', constant_values=0)
+            wav = nn.functional.pad(wav, (0, pad_num), mode = 'constant', value = 0)
 
 
         gt, mask = self.get_ground_truth_annotated(self.index_dict[idx]['speech_ts'], len(wav))
@@ -149,7 +149,7 @@ class SileroVadDataset(Dataset):
         return wav, gt, mask
 
     def get_ground_truth_annotated(self, annotation, audio_length_samples):
-        gt = np.zeros(audio_length_samples)
+        gt = torch.zeros(audio_length_samples)
         
         for i in annotation:
             try:
@@ -157,9 +157,9 @@ class SileroVadDataset(Dataset):
             except:
                 print(i)
                 raise ValueError
-        squeezed_predicts = np.average(gt.reshape(-1, self.num_samples), axis=1)
-        squeezed_predicts = (squeezed_predicts > 0.5).astype(int)
-        mask = np.ones(len(squeezed_predicts))
+        squeezed_predicts = torch.mean(gt.reshape(-1, self.num_samples), 1)
+        squeezed_predicts = (squeezed_predicts > 0.5).to(torch.float)
+        mask = torch.ones(len(squeezed_predicts))
         mask[squeezed_predicts == 0] = self.noise_loss
         return squeezed_predicts, mask
 

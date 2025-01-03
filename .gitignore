@@ -20,3 +20,10 @@ performance_longchau.py
 path_version2.py
 *.yml
 __init__.py
+*.jit
+events.out*
+.gitignore
+newtest.ipynb
+output2_1_2025
+model2_1.pth
+download_test.py
