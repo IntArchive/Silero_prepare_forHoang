@@ -27,5 +27,5 @@ output2_1_2025
 model2_1.pth
 download_test.py
 checkpoint/
-/tuning/feather/
+/feather/
 
